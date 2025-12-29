@@ -1,28 +1,19 @@
-// Video -> ASCII (Lite + Colorido via Canvas)
-// Sem spans, sem Node, com limitador de FPS e auto-qualidade.
-
 const video = document.getElementById("video");
 const fileInput = document.getElementById("file");
 const asciiCanvas = document.getElementById("asciiCanvas");
-
 const btnCam = document.getElementById("btnCam");
 const btnFile = document.getElementById("btnFile");
 const btnStop = document.getElementById("btnStop");
-
 const colsRange = document.getElementById("cols");
 const colsVal = document.getElementById("colsVal");
-
 const fpsRange = document.getElementById("fps");
 const fpsVal = document.getElementById("fpsVal");
-
 const fontRange = document.getElementById("font");
 const fontVal = document.getElementById("fontVal");
-
 const charsetSel = document.getElementById("charset");
 const coloredChk = document.getElementById("colored");
 const autoChk = document.getElementById("auto");
 const statusEl = document.getElementById("status");
-
 const aCtx = asciiCanvas.getContext("2d");
 const off = document.createElement("canvas");
 const oCtx = off.getContext("2d", { willReadFrequently: true });
