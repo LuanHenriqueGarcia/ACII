@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Video → ASCII (Lite)</title>
+
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --fg: #e6edf3;
+        --muted: #a7b0bb;
+        --border: #1f2a37;
+        --pill: #111827;
+        --pillb: #2b3b52;
+      }
+
+      body { margin: 0; font-family: system-ui, Arial; background: var(--bg); color: var(--fg); }
+      header {
+        display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+        padding: 12px 14px; border-bottom: 1px solid var(--border);
+      }
+
+      button {
+        padding: 8px 10px; border: 1px solid var(--pillb); background: var(--pill);
+        color: var(--fg); border-radius: 10px; cursor: pointer;
+      }
+      button:hover { filter: brightness(1.1); }
+
+      .pill {
+        display: inline-flex; gap: 8px; align-items: center;
+        font-size: 12px; opacity: .95;
+        border: 1px solid var(--pillb);
+        padding: 6px 10px; border-radius: 999px;
+        background: rgba(17,24,39,0.6);
+      }
+
+      label { color: var(--muted); }
+      input[type="range"] { width: 140px; }
+      select { background: transparent; color: var(--fg); border: 1px solid var(--pillb); border-radius: 8px; padding: 4px 6px; }
+      select option { background: #0f172a; color: var(--fg); }
+
+      #status { color: var(--muted); }
+
+      main { padding: 10px 12px; }
+      video { display: none; }
+
+      #asciiCanvas {
+        width: 100%;
+        height: calc(100vh - 110px);
+        display: block;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #070a10;
+      }
+
+      .hint {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        max-width: 900px;
+        line-height: 1.35;
+      }
+      code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 6px; }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <button id="btnCam">📷 Câmera</button>
+      <button id="btnFile">🎞️ Vídeo</button>
+      <button id="btnStop">⏹️ Parar</button>
+
+      <span class="pill">
+        <label>Colunas</label>
+        <input id="cols" type="range" min="50" max="220" value="120" />
+        <span id="colsVal">120</span>
+      </span>
+
+      <span class="pill">
+        <label>FPS</label>
+        <input id="fps" type="range" min="5" max="30" value="15" />
+        <span id="fpsVal">15</span>
+      </span>
+
+      <span class="pill">
+        <label>Fonte</label>
+        <input id="font" type="range" min="6" max="14" value="8" />
+        <span id="fontVal">8</span>
+      </span>
+
+      <span class="pill">
+        <label>Charset</label>
+        <select id="charset">
+          <option value="@%#*+=-:. ">standard</option>
+          <option value=" .:-=+*#%@">invertido</option>
+          <option value="█▓▒░ ">blocks</option>
+          <option value="@#. ">minimal</option>
+          <option value="01">binary</option>
+        </select>
+      </span>
+
+      <span class="pill">
+        <label><input id="colored" type="checkbox" checked /> Colorido</label>
+      </span>
+
+      <span class="pill">
+        <label><input id="auto" type="checkbox" checked /> Auto-qualidade</label>
+      </span>
+
+      <span class="pill" id="status">Pronto.</span>
+    </header>
+
+    <main>
+      <video id="video" playsinline></video>
+      <input id="file" type="file" accept="video/*" hidden />
+      <canvas id="asciiCanvas"></canvas>
+
+      <div class="hint">
+        Dica: webcam geralmente só funciona em <b>http://localhost</b> ou HTTPS (abrir o HTML no <code>file://</code> costuma bloquear câmera).
+        Se travar, abaixa <b>Colunas</b> ou <b>FPS</b>.
+      </div>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
