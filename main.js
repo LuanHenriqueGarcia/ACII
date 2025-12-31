@@ -12,6 +12,11 @@ const fontRange = document.getElementById("font");
 const fontVal = document.getElementById("fontVal");
 const charsetSel = document.getElementById("charset");
 const coloredChk = document.getElementById("colored");
+const monoColorContainer = document.getElementById("monoColorContainer");
+const monoColorInput = document.getElementById("monoColor");
+const brightnessRange = document.getElementById("brightness");
+const contrastRange = document.getElementById("contrast");
+const invertChk = document.getElementById("invert");
 const autoChk = document.getElementById("auto");
 const statusEl = document.getElementById("status");
 const aCtx = asciiCanvas.getContext("2d");
@@ -39,8 +44,23 @@ function clamp(n, min, max) {
 }
 
 function pickChar(lum, charset) {
+  if (charset === "braille") return ""; // Handled separately
   const idx = Math.floor((lum / 255) * (charset.length - 1));
   return charset[idx];
+}
+
+function getBrailleChar(pixels) {
+  let code = 0;
+  const thresholds = pixels.map(p => (p > 128 ? 1 : 0));
+  if (thresholds[0]) code |= 0x01;
+  if (thresholds[1]) code |= 0x02;
+  if (thresholds[2]) code |= 0x04;
+  if (thresholds[3]) code |= 0x08;
+  if (thresholds[4]) code |= 0x10;
+  if (thresholds[5]) code |= 0x20;
+  if (thresholds[6]) code |= 0x40;
+  if (thresholds[7]) code |= 0x80;
+  return String.fromCharCode(0x2800 + code);
 }
 
 function stopAll() {
@@ -160,14 +180,24 @@ function frameLoop() {
   const cols = Number(colsRange.value);
   const charset = charsetSel.value;
   const colored = !!coloredChk.checked;
+  const monoColor = monoColorInput.value;
+  const brightness = Number(brightnessRange.value);
+  const contrast = Number(contrastRange.value);
+  const invert = !!invertChk.checked;
+
+  monoColorContainer.style.display = colored ? "none" : "inline-flex";
 
   const aspect = video.videoHeight / video.videoWidth;
   const rows = Math.max(20, Math.floor(cols * aspect * 0.55));
 
-  off.width = cols;
-  off.height = rows;
-  oCtx.drawImage(video, 0, 0, cols, rows);
-  const img = oCtx.getImageData(0, 0, cols, rows);
+  const isBraille = charset === "braille";
+  const sampleCols = isBraille ? cols * 2 : cols;
+  const sampleRows = isBraille ? rows * 4 : rows;
+
+  off.width = sampleCols;
+  off.height = sampleRows;
+  oCtx.drawImage(video, 0, 0, sampleCols, sampleRows);
+  const img = oCtx.getImageData(0, 0, sampleCols, sampleRows);
   const data = img.data;
 
   const fontSize = Number(fontRange.value);
@@ -185,22 +215,65 @@ function frameLoop() {
 
 
   for (let y = 0; y < rows; y++) {
-    const rowOffset = y * cols * 4;
     const py = y * charH;
 
     for (let x = 0; x < cols; x++) {
-      const i = rowOffset + x * 4;
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
+      let r, g, b, lum, ch;
 
-      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      const ch = pickChar(lum, charset);
+      if (isBraille) {
+        const brPixels = [];
+        let tr = 0, tg = 0, tb = 0;
+        
+        // Braille grid is 2x4
+        for (let bx = 0; bx < 2; bx++) {
+          for (let by = 0; by < 4; by++) {
+            const si = ((y * 4 + by) * sampleCols + (x * 2 + bx)) * 4;
+            let pr = data[si];
+            let pg = data[si + 1];
+            let pb = data[si + 2];
+
+            if (brightness !== 1.0 || contrast !== 1.0) {
+              pr = clamp((pr - 128) * contrast + 128 + (brightness - 1) * 128, 0, 255);
+              pg = clamp((pg - 128) * contrast + 128 + (brightness - 1) * 128, 0, 255);
+              pb = clamp((pb - 128) * contrast + 128 + (brightness - 1) * 128, 0, 255);
+            }
+
+            const plum = 0.2126 * pr + 0.7152 * pg + 0.0722 * pb;
+            brPixels.push(plum);
+            tr += pr; tg += pg; tb += pb;
+          }
+        }
+        
+        // Reorder for Braille dot mapping
+        const mapped = [
+          brPixels[0], brPixels[1], brPixels[2], 
+          brPixels[4], brPixels[5], brPixels[6],
+          brPixels[3], brPixels[7]
+        ].map(p => invert ? 255 - p : p);
+        
+        ch = getBrailleChar(mapped);
+        r = tr / 8; g = tg / 8; b = tb / 8;
+      } else {
+        const i = (y * sampleCols + x) * 4;
+        r = data[i];
+        g = data[i + 1];
+        b = data[i + 2];
+
+        if (brightness !== 1.0 || contrast !== 1.0) {
+          r = clamp((r - 128) * contrast + 128 + (brightness - 1) * 128, 0, 255);
+          g = clamp((g - 128) * contrast + 128 + (brightness - 1) * 128, 0, 255);
+          b = clamp((b - 128) * contrast + 128 + (brightness - 1) * 128, 0, 255);
+        }
+
+        lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        const finalLum = invert ? 255 - lum : lum;
+        ch = pickChar(finalLum, charset);
+      }
 
       if (colored) {
-        aCtx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        aCtx.fillStyle = "rgb(" + Math.floor(r) + "," + Math.floor(g) + "," + Math.floor(b) + ")";
       } else {
-        aCtx.fillStyle = "#00ff66";
+        aCtx.fillStyle = monoColor;
       }
 
       aCtx.fillText(ch, x * charW, py);
